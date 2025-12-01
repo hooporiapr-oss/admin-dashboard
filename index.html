@@ -114,7 +114,7 @@ tr:hover{background:rgba(255,255,255,0.05)}
 </div>
 <div class="form-group" id="studentCountGroup">
 <label>Number of Students *</label>
-<input type="number" id="studentCount" placeholder="25" min="1" value="25" onchange="updatePrice()">
+<input type="number" id="studentCount" placeholder="25" min="1" value="25" onchange="updatePrice()" oninput="updatePrice()">
 </div>
 </div>
 
@@ -159,16 +159,17 @@ tr:hover{background:rgba(255,255,255,0.05)}
 <div class="section">
 <h2>💰 Pricing Tiers</h2>
 <table>
-<tr><th>Students</th><th>Price/Student</th><th>Min. Total</th></tr>
-<tr><td>25 - 99</td><td>$4.00</td><td>$100</td></tr>
-<tr><td>100 - 249</td><td>$3.50</td><td>$350</td></tr>
-<tr><td>250 - 499</td><td>$3.00</td><td>$750</td></tr>
-<tr><td>500+</td><td>$2.50</td><td>$1,250</td></tr>
+<tr><th>Students</th><th>Price/Student</th><th>Total</th><th>Type</th></tr>
+<tr style="background:rgba(46,204,113,0.1)"><td>1 - 24</td><td>$0.00</td><td>$0.00</td><td><span class="badge badge-yellow">🎁 Trial Only</span></td></tr>
+<tr><td>25 - 99</td><td>$4.00</td><td>$100+</td><td>Paid</td></tr>
+<tr><td>100 - 249</td><td>$3.50</td><td>$350+</td><td>Paid</td></tr>
+<tr><td>250 - 499</td><td>$3.00</td><td>$750+</td><td>Paid</td></tr>
+<tr><td>500+</td><td>$2.50</td><td>$1,250+</td><td>Paid</td></tr>
 </table>
 <div style="margin-top:15px;padding:15px;background:rgba(46,204,113,0.1);border-radius:8px;border:1px solid rgba(46,204,113,0.3)">
 <strong style="color:#2ecc71">🎁 Free Trial Options:</strong><br>
-<span style="opacity:0.8">• 14-Day Trial: 1-24 students, $0.00<br>
-• 7-Day Trial: 1-24 students, $0.00</span>
+<span style="opacity:0.8">• 14-Day Trial: 1-24 students, $0.00, auto-expires<br>
+• 7-Day Trial: 1-24 students, $0.00, auto-expires</span>
 </div>
 </div>
 
@@ -269,22 +270,28 @@ async function loadLicenses() {
 function updateLicenseType() {
     const type = document.getElementById('licenseType').value;
     const studentCountInput = document.getElementById('studentCount');
-    const studentCountGroup = document.getElementById('studentCountGroup');
     
     if (type === 'trial14' || type === 'trial7') {
-        // Free trial - set to 20 students max, $0.00
-        studentCountInput.value = 20;
-        studentCountInput.max = 24;
+        // Free trial - allow 1-24 students
         studentCountInput.min = 1;
+        studentCountInput.max = 24;
+        // Only change value if it's outside the valid range
+        const currentValue = parseInt(studentCountInput.value);
+        if (currentValue < 1 || currentValue > 24) {
+            studentCountInput.value = 10;
+        }
         
         const days = type === 'trial14' ? 14 : 7;
+        const count = parseInt(studentCountInput.value) || 10;
         document.getElementById('priceAmount').textContent = '$0.00';
-        document.getElementById('priceDetails').textContent = `🎁 ${days}-Day Free Trial (1-24 students)`;
+        document.getElementById('priceDetails').textContent = `🎁 ${days}-Day Free Trial (${count} students)`;
     } else {
-        // Paid license
+        // Paid license - minimum 25 students
         studentCountInput.min = 25;
         studentCountInput.max = '';
-        if (parseInt(studentCountInput.value) < 25) {
+        // Only change value if it's below minimum
+        const currentValue = parseInt(studentCountInput.value);
+        if (currentValue < 25) {
             studentCountInput.value = 25;
         }
         updatePrice();
@@ -293,18 +300,29 @@ function updateLicenseType() {
 
 function updatePrice() {
     const type = document.getElementById('licenseType').value;
+    const count = parseInt(document.getElementById('studentCount').value) || 1;
     
     if (type === 'trial14' || type === 'trial7') {
-        updateLicenseType();
+        // Update trial display with current student count
+        const days = type === 'trial14' ? 14 : 7;
+        document.getElementById('priceAmount').textContent = '$0.00';
+        document.getElementById('priceDetails').textContent = `🎁 ${days}-Day Free Trial (${count} students)`;
         return;
     }
     
-    const count = parseInt(document.getElementById('studentCount').value) || 25;
+    // Paid license pricing
     let price = 4.00;
     
     if (count >= 500) price = 2.50;
     else if (count >= 250) price = 3.00;
     else if (count >= 100) price = 3.50;
+    else if (count >= 25) price = 4.00;
+    else if (count >= 1) {
+        // 1-24 students for paid - show warning
+        document.getElementById('priceAmount').textContent = '⚠️ Use Trial';
+        document.getElementById('priceDetails').textContent = '1-24 students require a FREE TRIAL license';
+        return;
+    }
     
     const total = (count * price).toFixed(2);
     
